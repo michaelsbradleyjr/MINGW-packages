@@ -1,0 +1,54 @@
+_realname=notcurses
+pkgbase=mingw-w64-${_reaalname}
+pkgname=${MINGW_PACKAGE_PREFIX}-${_realname}
+pkgver=2.3.13
+pkgrel=1
+pkgdesc="Blingful TUIs and character graphics"
+arch=('x86_64')
+url="https://github.com/dankamongmen/notcurses"
+license=('Apache-2.0')
+depends=("${MINGW_PACKAGE_PREFIX}-ffmpeg"
+         "${MINGW_PACKAGE_PREFIX}-libunistring"
+         "${MINGW_PACKAGE_PREFIX}-ncurses")
+makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
+             "${MINGW_PACKAGE_PREFIX}-doctest")
+source=("${url}/archive/v${pkgver}.tar.gz")
+sha256sums=('c5eb822ea5b98028acd4a8dd21b155f893d928e4a30a8309eea0c406403af4e8')
+
+prepare() {
+  cd "${srcdir}/${_realname}-${pkgver}"
+}
+
+build() {
+  mkdir -p "${srcdir}/build-${MSYSTEM}"
+  cd "${srcdir}/build-${MSYSTEM}"
+  declare -a extra_config
+  if check_option "debug" "n"; then
+    extra_config+=("-DCMAKE_BUILD_TYPE=Release")
+  else
+    extra_config+=("-DCMAKE_BUILD_TYPE=Debug")
+  fi
+  extra_config+=("-DUSE_DOCTEST=off")
+  extra_config+=("-DUSE_PANDOC=off")
+  extra_config+=("-DUSE_READLINE=off")
+
+  MSYS2_ARG_CONV_EXCL="-DCMAKE_INSTALL_PREFIX=" \
+  cmake -DCMAKE_INSTALL_PREFIX="${MINGW_PREFIX}" \
+        -DCMAKE_INSTALL_LIBDIR=lib \
+        -G"MSYS Makefiles" \
+        "${extra_config[@]}" \
+        ../${_realname}-${pkgver}
+  make
+}
+
+check() {
+  cd "${srcdir}/build-${MSYSTEM}"
+  ctest --output-on-failure
+}
+
+package() {
+  cd "${srcdir}/build-${MSYSTEM}"
+  make DESTDIR="${pkgdir}" install
+  install -Dm 0644 "${srcdir}/${_realname}-${pkgver}/COPYRIGHT" \
+    "${pkgdir}${MINGW_PREFIX}/share/licenses/${_realname}/LICENSE"
+}
